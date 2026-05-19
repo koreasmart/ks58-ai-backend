@@ -1,0 +1,60 @@
+# .github/workflows/deploy.yml
+name: Deploy FastAPI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ "master" ]
+    types: [closed]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & test
+        run: |
+          pip install -r requirements.txt
+          pytest tests/ -v
+
+      - name: Deploy to CentOS Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.KSMARTDEV }}
+          port: ${{ secrets.OCI_PORT }}
+          script: |
+            cd /home/sst/ai-backen
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt --upgrade
+            sudo systemctl restart ai-backend
+
+      # .env 파일 생성 (SSH와 별도 step으로 분리)
+      - name: Create .env file on server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.KSMARTDEV }}
+          port: ${{ secrets.OCI_PORT }}
+          script: |
+            # .env 파일이 없을 때만 생성 (기존 파일 보호)
+            if [ ! -f /home/sst/ai-backend/.env ]; then
+              cat > /home/sst/ai-backend/.env << 'EOF'
+            ${{ secrets.ENV_FILE }}
+            EOF
+              echo ".env 파일 생성 완료"
+            else
+              echo ".env 파일 이미 존재, 스킵"
+            fi
