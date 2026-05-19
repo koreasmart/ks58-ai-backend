@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: Deploy FastAPI
 
 on:
@@ -12,6 +11,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # merge된 PR만 실행 (push는 항상 실행)
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,9 +23,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies & test
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
+      # .env 생성을 배포보다 먼저
+      - name: Create .env file on server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.KSMARTDEV }}
+          port: ${{ secrets.OCI_PORT }}
+          script: |
+            if [ ! -f ${{ secrets.OCI_DEPLOY_PATH }}/.env ]; then
+              cat > ${{ secrets.OCI_DEPLOY_PATH }}/.env << 'EOF'
+            ${{ secrets.ENV_FILE }}
+            EOF
+              echo ".env 파일 생성 완료"
+            else
+              echo ".env 파일 이미 존재, 스킵"
+            fi
 
       - name: Deploy to CentOS Server
         uses: appleboy/ssh-action@v1.0.0
@@ -33,27 +53,8 @@ jobs:
           key: ${{ secrets.KSMARTDEV }}
           port: ${{ secrets.OCI_PORT }}
           script: |
-            cd /home/sst/ai-backen
-            git pull origin main
+            cd ${{ secrets.OCI_DEPLOY_PATH }}
+            git pull origin master
             source venv/bin/activate
             pip install -r requirements.txt --upgrade
             sudo systemctl restart ai-backend
-
-      # .env 파일 생성 (SSH와 별도 step으로 분리)
-      - name: Create .env file on server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.OCI_HOST }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.KSMARTDEV }}
-          port: ${{ secrets.OCI_PORT }}
-          script: |
-            # .env 파일이 없을 때만 생성 (기존 파일 보호)
-            if [ ! -f /home/sst/ai-backend/.env ]; then
-              cat > /home/sst/ai-backend/.env << 'EOF'
-            ${{ secrets.ENV_FILE }}
-            EOF
-              echo ".env 파일 생성 완료"
-            else
-              echo ".env 파일 이미 존재, 스킵"
-            fi
