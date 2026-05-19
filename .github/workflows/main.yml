@@ -64,6 +64,7 @@ jobs:
             fi
             
             source venv/bin/activate
-            pip install --upgrade pip        # ← pip 먼저 업그레이드
+            pip install --upgrade pip        
+            pip install gunicorn uvicorn
             pip install -r requirements.txt --upgrade
             sudo systemctl restart ai-backend
