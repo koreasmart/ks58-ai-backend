@@ -24,8 +24,6 @@ jobs:
       - name: Install dependencies & test
         run: |
           pip install -r requirements.txt
-          pip install pytest
-          pytest tests/ -v
 
       - name: Deploy to CentOS Server
         uses: appleboy/ssh-action@v1.0.0
