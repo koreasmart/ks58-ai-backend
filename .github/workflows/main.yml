@@ -53,6 +53,11 @@ jobs:
           key: ${{ secrets.KSMARTDEV }}
           port: ${{ secrets.OCI_PORT }}
           script: |
+            # git repo가 없으면 clone, 있으면 pull
+            if [ ! -d "${{ secrets.OCI_DEPLOY_PATH }}/.git" ]; then
+              git clone https://${{ secrets.GIT_TOKEN }}@github.com/koreasmart/ks58-ai-backend.git ${{ secrets.OCI_DEPLOY_PATH }}
+            fi
+          
             cd ${{ secrets.OCI_DEPLOY_PATH }}
             git pull origin master
             source venv/bin/activate
