@@ -55,11 +55,26 @@ jobs:
           script: |
             # git repo가 없으면 clone, 있으면 pull
             if [ ! -d "${{ secrets.OCI_DEPLOY_PATH }}/.git" ]; then
+              # 디렉토리가 있으면 삭제 후 clone
+              find ${{ secrets.OCI_DEPLOY_PATH }} -maxdepth 0 -type d -exec rm -rf {} +
+              echo "기존 디렉토리 삭제 완료"
               git clone https://${{ secrets.GIT_TOKEN }}@github.com/koreasmart/ks58-ai-backend.git ${{ secrets.OCI_DEPLOY_PATH }}
+              echo "clone 완료"
             fi
-          
+            
             cd ${{ secrets.OCI_DEPLOY_PATH }}
             git pull origin master
+            
+            # .env 파일 생성
+            if [ ! -f ${{ secrets.OCI_DEPLOY_PATH }}/.env ]; then
+              cat > ${{ secrets.OCI_DEPLOY_PATH }}/.env << 'EOF'
+            ${{ secrets.ENV_FILE }}
+            EOF
+              echo ".env 파일 생성 완료"
+            else
+              echo ".env 파일 이미 존재, 스킵"
+            fi
+            
             source venv/bin/activate
             pip install -r requirements.txt --upgrade
             sudo systemctl restart ai-backend
