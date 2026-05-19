@@ -56,6 +56,12 @@ jobs:
             else
               echo ".env 파일 이미 존재, 스킵"
             fi
+
+            # venv 없으면 생성
+            if [ ! -f "venv/bin/activate" ]; then
+              python3 -m venv venv
+              echo "venv 생성 완료"
+            fi
             
             source venv/bin/activate
             pip install -r requirements.txt --upgrade
